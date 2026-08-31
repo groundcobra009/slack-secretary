@@ -9,3 +9,9 @@ build/
 __pycache__/
 *.pyc
 _archive/
+
+# Beads / Dolt files (added by bd init)
+.dolt/
+*.db
+.beads-credential-key
+.beads/proxieddb/
