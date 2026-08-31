@@ -1,14 +1,19 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import {
   validateConfig,
   loadWorkspacesConfig,
   resolveWorkspaceSecrets,
+  resolveConfigPath,
   isAllowlisted,
   isExcludedChannel,
   isExcludedDmUser,
-  DEFAULT_CONFIG_PATH,
 } from "../src/config.js";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const FIXTURE_BRAIN_DIR = path.join(__dirname, "fixtures", "brain");
 
 const validWorkspace = {
   name: "main",
@@ -41,10 +46,17 @@ test("validateConfig: 名前重複は例外", () => {
   assert.throws(() => validateConfig([validWorkspace, validWorkspace]), /重複/);
 });
 
-test("loadWorkspacesConfig: リポジトリ同梱のconfig/workspaces.jsonが読める", async () => {
-  const workspaces = await loadWorkspacesConfig(DEFAULT_CONFIG_PATH);
+test("resolveConfigPath: brainベースディレクトリからconfig/workspaces.jsonのパスを組み立てる", () => {
+  assert.equal(
+    resolveConfigPath("/tmp/brain"),
+    path.join("/tmp/brain", "config", "workspaces.json")
+  );
+});
+
+test("loadWorkspacesConfig: fixtureのconfig/workspaces.jsonが読める", async () => {
+  const workspaces = await loadWorkspacesConfig(resolveConfigPath(FIXTURE_BRAIN_DIR));
   assert.ok(workspaces.length >= 1);
-  assert.equal(workspaces[0].name, "main");
+  assert.equal(workspaces[0].name, "test-workspace");
 });
 
 test("resolveWorkspaceSecrets: env変数名からトークンを解決する", () => {

@@ -1,6 +1,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { EventEmitter } from "node:events";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import {
   isEscalationByKeyword,
   extractDisclaimerText,
@@ -10,9 +12,12 @@ import {
   createClaudeClient,
   generateReply,
   loadPersona,
+  resolvePersonaDir,
   ESCALATION_TEXT,
-  DEFAULT_PERSONA_DIR,
 } from "../src/reply.js";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const FIXTURE_BRAIN_DIR = path.join(__dirname, "fixtures", "brain");
 
 const persona = {
   core: "丁寧に振る舞う",
@@ -155,8 +160,8 @@ test("createClaudeClient: 非ゼロ終了コードは例外を投げる", async 
   await assert.rejects(() => client("test-prompt"), /exit 1/);
 });
 
-test("loadPersona: リポジトリ同梱のpersona/*.mdを読み込める", async () => {
-  const loaded = await loadPersona(DEFAULT_PERSONA_DIR);
+test("loadPersona: fixtureのpersona/*.mdを読み込める", async () => {
+  const loaded = await loadPersona(resolvePersonaDir(FIXTURE_BRAIN_DIR));
   assert.match(loaded.core, /私/);
   assert.match(loaded.judgment, /エスカレーション/);
   assert.ok(loaded.disclaimerText.includes("けいたろうの秘書AI"));

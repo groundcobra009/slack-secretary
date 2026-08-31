@@ -5,10 +5,12 @@ import { isAllowlisted } from "./config.js";
 
 /**
  * allowlist外への投稿を試みたときに投げる例外。
+ * メッセージ本文にチャンネル名を含めない（ログ衛生。呼び出し側がログを出す可能性があるため）。
+ * チャンネル名が必要な処理は `err.channelName` プロパティ経由で行う。
  */
 export class NotAllowlistedError extends Error {
   constructor(channelName) {
-    super(`チャンネル "${channelName}" はreplyAllowlist外のため投稿を拒否しました`);
+    super("チャンネルはreplyAllowlist外のため投稿を拒否しました");
     this.name = "NotAllowlistedError";
     this.channelName = channelName;
   }
