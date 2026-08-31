@@ -9,13 +9,13 @@
 
 ## 2026-09-01 — public/private脳分離（Issue #4）
 
-- **変更対象**: `src/` `.github/workflows/secretary.yml` `test/` `README.md` `docs/setup-guide.html` `DECISIONS.md`（`persona/` `config/` `state/` は削除・`slack-secretary-brain` リポジトリへ移設）
+- **変更対象**: `src/` `.github/workflows/secretary.yml` `test/` `README.md` `DECISIONS.md`（`persona/` `config/` `state/` `docs/setup-guide.html` は削除し `slack-secretary-brain` リポジトリへ移設）
 - **変更内容**:
   - `persona/` `config/workspaces.json` `state/last_seen.json` をprivateリポジトリ `groundcobra009/slack-secretary-brain` へ移設
   - `src/config.js` `src/state.js` `src/reply.js` を「brainベースディレクトリ」からパスを解決する方式に変更（`resolveConfigPath` / `resolveStatePath` / `resolvePersonaDir`）。`src/run.js` に `BRAIN_DIR` 環境変数（既定 `./brain`）を追加し、brain不在時は「SKIP: brain not found」で正常終了
   - ログ衛生: 返信文・メッセージ本文・チャンネル名・ユーザー名・ユーザーIDをログ出力から排除。`src/log-safe.js` でチャンネル識別子を非復元形に変換し、処理結果は posted/skipped/failed のラベルのみ出す。`test/log-hygiene.test.js` で担保
   - `secretary.yml`: `BRAIN_REPO_TOKEN`（Fine-grained PAT）でbrainリポジトリをcheckoutするステップを追加。未設定時はcheckout・実行・state pushの各ステップをスキップして正常終了。state変更のコミット・pushをbrainリポジトリ側で実行するよう変更
-  - README・setup-guide.htmlに2リポジトリ構成の図解・`BRAIN_REPO_TOKEN`発行手順・Secrets一覧を追記。DECISIONSにDEC-004（public/private分離採用）・DEC-005（Google Drive案不採用）を追記
+  - README・setup-guide.html（brain側へ移設）に2リポジトリ構成の図解・`BRAIN_REPO_TOKEN`発行手順・Secrets一覧を追記。DECISIONSにDEC-004（public/private分離採用）・DEC-005（Google Drive案不採用）を追記
 - **変更理由**: GitHub ActionsのコストをpublicリポジトリのFree枠で$0化するため（privateリポジトリの月2,000分枠を使い切り課金停止が発生したため）。実行コード（public化予定）と個人情報を含む脳（private維持）を分離する
 - **影響範囲**: 実行時に `BRAIN_DIR` で参照するbrainリポジトリが必要（Secretsに`BRAIN_REPO_TOKEN`未登録の間はActionsが正常SKIPし続ける）。`npm test` はbrainリポジトリが無くても全通過する（`test/fixtures/brain/` のダミーデータで代替）
 
