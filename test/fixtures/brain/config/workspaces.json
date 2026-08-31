@@ -1,0 +1,13 @@
+[
+  {
+    "name": "test-workspace",
+    "botTokenEnv": "SLACK_BOT_TOKEN_TEST",
+    "userTokenEnv": "SLACK_USER_TOKEN_TEST",
+    "userIdEnv": "SLACK_USER_ID_TEST",
+    "replyAllowlist": ["test-channel"],
+    "readExclude": {
+      "channels": [],
+      "dmUsers": []
+    }
+  }
+]

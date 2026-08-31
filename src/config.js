@@ -1,12 +1,17 @@
 // config/workspaces.json のロードとバリデーションを担当するモジュール。
 // トークンの「実値」はここでは読まない（env変数名だけを保持し、実値の解決は run.js が行う）。
+// config/ の実データは brain リポジトリに置かれる（このファイル自体はどこにも実データの既定値を持たない）。
 
 import { readFile } from "node:fs/promises";
-import { fileURLToPath } from "node:url";
 import path from "node:path";
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-export const DEFAULT_CONFIG_PATH = path.join(__dirname, "..", "config", "workspaces.json");
+/**
+ * brainベースディレクトリから config/workspaces.json の絶対パスを組み立てる。
+ * @param {string} brainDir
+ */
+export function resolveConfigPath(brainDir) {
+  return path.join(brainDir, "config", "workspaces.json");
+}
 
 /**
  * 1ワークスペース分の設定をバリデーションする。
@@ -66,10 +71,10 @@ export function validateConfig(configData) {
 
 /**
  * config/workspaces.json を読み込みバリデーションする。
- * @param {string} [configPath]
+ * @param {string} configPath
  * @returns {Promise<object[]>}
  */
-export async function loadWorkspacesConfig(configPath = DEFAULT_CONFIG_PATH) {
+export async function loadWorkspacesConfig(configPath) {
   const raw = await readFile(configPath, "utf8");
   const data = JSON.parse(raw);
   return validateConfig(data);

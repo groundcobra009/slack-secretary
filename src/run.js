@@ -1,14 +1,20 @@
 // オーケストレーター: scan → reply → post → state更新。
 // 環境変数からトークンを取得し、無ければ「SKIP: secrets not configured」を出して正常終了する。
+// persona/config/state の実データは brain リポジトリ（別チェックアウト）に置かれる。
+// BRAIN_DIR 環境変数（既定 "./brain"）でその場所を解決し、無ければ「SKIP: brain not found」で正常終了する。
 
-import { loadWorkspacesConfig, resolveWorkspaceSecrets, DEFAULT_CONFIG_PATH } from "./config.js";
+import { loadWorkspacesConfig, resolveWorkspaceSecrets, resolveConfigPath } from "./config.js";
 import { createSlackClient } from "./slack.js";
 import { scanMentions } from "./scan.js";
-import { loadState, saveState, updateLastSeen, DEFAULT_STATE_PATH } from "./state.js";
+import { loadState, saveState, updateLastSeen, resolveStatePath } from "./state.js";
 import { parseICS, formatUpcomingEvents } from "./calendar.js";
-import { generateReply, loadPersona, createClaudeClient, DEFAULT_PERSONA_DIR } from "./reply.js";
+import { generateReply, loadPersona, createClaudeClient, resolvePersonaDir } from "./reply.js";
 import { postReply, NotAllowlistedError } from "./post.js";
+import { obfuscateId } from "./log-safe.js";
 import { pathToFileURL } from "node:url";
+import { existsSync } from "node:fs";
+
+export const DEFAULT_BRAIN_DIR = "./brain";
 
 /**
  * ICS限定公開URLを取得する既定実装（fetch標準のみ・依存追加なし）。
@@ -29,15 +35,26 @@ async function defaultFetchIcs(url) {
  */
 export async function run({
   env = process.env,
-  configPath = DEFAULT_CONFIG_PATH,
-  statePath = DEFAULT_STATE_PATH,
-  personaDir = DEFAULT_PERSONA_DIR,
+  brainDir = env.BRAIN_DIR ?? DEFAULT_BRAIN_DIR,
+  configPath,
+  statePath,
+  personaDir,
   slackClient = createSlackClient(),
   claudeClient = createClaudeClient(),
   fetchIcs = defaultFetchIcs,
   now = new Date(),
   logger = console,
 } = {}) {
+  // 3つとも明示指定されていない（＝テスト等で個別注入していない）ときだけ brain 存在チェックを行う
+  const usesBrainDefaults = !configPath && !statePath && !personaDir;
+  if (usesBrainDefaults && !existsSync(brainDir)) {
+    logger.log("SKIP: brain not found");
+    return { anyConfigured: false, brainFound: false };
+  }
+  configPath = configPath ?? resolveConfigPath(brainDir);
+  statePath = statePath ?? resolveStatePath(brainDir);
+  personaDir = personaDir ?? resolvePersonaDir(brainDir);
+
   const workspaces = await loadWorkspacesConfig(configPath);
   let state = await loadState(statePath);
   const persona = await loadPersona(personaDir);
@@ -66,13 +83,17 @@ export async function run({
       try {
         const icsText = await fetchIcs(env.GCAL_ICS_URL);
         calendarSummary = formatUpcomingEvents(parseICS(icsText), { now });
-      } catch (err) {
-        logger.error(`カレンダー取得に失敗しました: ${err.message}`);
+      } catch {
+        // ログ衛生: 例外メッセージにはICS URL等が混入しうるため詳細は出さない
+        logger.error("カレンダー取得に失敗しました");
       }
     }
 
+    logger.log(`scan: ${events.length} mention(s) found (workspace=${workspace.name})`);
+
     for (const event of events) {
       let shouldMarkProcessed = true;
+      const chLabel = obfuscateId(event.channelId);
       try {
         const reply = await generateReply({
           messageText: event.text,
@@ -89,14 +110,15 @@ export async function run({
           threadTs: event.threadTs,
           text: reply.text,
         });
+        // ログ衛生: 返信文・チャンネル名・ユーザー情報は出さない（件数・非復元IDのみ）
+        logger.log(`posted (workspace=${workspace.name} channel=${chLabel})`);
       } catch (err) {
         if (err instanceof NotAllowlistedError) {
           // allowlist外は設定を直さない限り解決しないため、再試行はせず処理済み扱いにする
-          logger.warn(`SKIP投稿: ${err.message}`);
+          logger.warn(`skipped: not allowlisted (workspace=${workspace.name} channel=${chLabel})`);
         } else {
-          logger.error(
-            `返信処理に失敗しました (workspace=${workspace.name} channel=${event.channelId} ts=${event.ts}): ${err.message}`
-          );
+          // ログ衛生: err.messageは出さない（返信処理系の例外に本文の断片が混入しうるため）
+          logger.error(`failed: reply processing error (workspace=${workspace.name} channel=${chLabel})`);
           shouldMarkProcessed = false; // 次回リトライできるようstateは更新しない
         }
       }

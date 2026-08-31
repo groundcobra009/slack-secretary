@@ -5,10 +5,15 @@
 import { spawn } from "node:child_process";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-export const DEFAULT_PERSONA_DIR = path.join(__dirname, "..", "persona");
+/**
+ * brainベースディレクトリから persona/ ディレクトリの絶対パスを組み立てる。
+ * persona/ の実データは brain リポジトリに置かれる（このファイル自体はどこにも実データの既定値を持たない）。
+ * @param {string} brainDir
+ */
+export function resolvePersonaDir(brainDir) {
+  return path.join(brainDir, "persona");
+}
 
 export const ESCALATION_TEXT =
   "この内容は私の判断だけではお答えできないため、本人に確認して戻します。";
@@ -48,9 +53,9 @@ export function isEscalationByKeyword(text) {
 
 /**
  * persona/*.md を読み込み、返信生成に使う形に整える。
- * @param {string} [personaDir]
+ * @param {string} personaDir
  */
-export async function loadPersona(personaDir = DEFAULT_PERSONA_DIR) {
+export async function loadPersona(personaDir) {
   const [core, judgment, disclaimerMd] = await Promise.all([
     readFile(path.join(personaDir, "core.md"), "utf8"),
     readFile(path.join(personaDir, "judgment.md"), "utf8"),

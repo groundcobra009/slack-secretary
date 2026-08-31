@@ -54,3 +54,36 @@
   - `slack-ai-agent` にスキルとして追加 → 常駐プロセス前提の設計に定期実行バッチを混在させると、依存関係・デプロイ方式・権限設計が複雑化するため不採用
 - **再検討条件**: Phase 2以降で `slack-ai-agent` 側にも定期実行の仕組みが整い、統合した方がむしろシンプルになると判断できた場合
 - **状態**: 有効
+
+---
+
+## DEC-004: public/private分離の採用（実行=public・脳=private）
+
+- **日付**: 2026-09-01
+- **Issue**: #4
+- **決定内容**: リポジトリを「public=実行（本リポジトリ・コード・workflow）」「private=脳（`groundcobra009/slack-secretary-brain`・persona/knowledge/feedback/config/state）」の2つに分離する。workflowはFine-grained PAT（`BRAIN_REPO_TOKEN`）でbrainリポジトリをcheckoutし、`BRAIN_DIR`環境変数経由で参照する
+- **決定理由**:
+  - GitHub ActionsはpublicリポジトリならFreeプランでも実質無制限に無料で使えるが、privateリポジトリは月2,000分の枠しかなく、5分cronの定期実行は他のActionsと合算するとすぐ枯渇する（実際に2026-08-31に課金停止で起動不能になった）。**Actionsコストを$0化する**ことが目的
+  - 実行コード（`src/` `.github/workflows/`）自体は個人情報を含まない汎用ロジックであり、public化しても問題ない
+  - persona・チャンネル設定・状態（`state/last_seen.json`）には個人情報・チャンネル名・運用上の機密が含まれるため、これらだけを別のprivateリポジトリに隔離すれば、実行コードのpublic化と機密保護を両立できる
+- **検討した代替案**:
+  - リポジトリ全体をpublicにし、persona/config/stateも`.gitignore`でActions実行時にのみ生成する運用 → generatorの元データをどこかに置く必要がありローカルでしか動かせなくなる。またActions上での注入経路（Secretsに大きなJSON/Markdownを詰める等）が煩雑・可読性が低いため不採用
+  - GitHub Actionsのspending limitを引き上げて課金運用にする（月$5〜10程度） → 動くが継続コストが発生し続ける。無料化できる設計変更が可能なため優先度を下げて不採用（Google Drive案の検討はDEC-005参照）
+- **再検討条件**: brainリポジトリのcheckout・push運用が想定より複雑・不安定になった場合、または将来的にGitHub側の無料枠ポリシーが変わった場合
+- **状態**: 有効
+
+---
+
+## DEC-005: Google Drive案の不採用（脳の置き場として）
+
+- **日付**: 2026-09-01
+- **Issue**: #4
+- **決定内容**: persona/config/state等の「脳」の置き場としてGoogle Driveを使う案は採用しない。GitHubの別private リポジトリ（`slack-secretary-brain`）を使う
+- **決定理由**:
+  - 本番のGitHub Actions上でGoogle Drive APIを叩くには何らかのGoogle資格情報（サービスアカウント鍵 or OAuthトークン）をActions Secretsに置く必要があり、「本番環境にGoogle資格情報を置かない」という過去の運用判断と衝突する
+  - けいたろう個人のGoogle Driveへの書き込みルールはai-company側の書き込み制限（`company/library/refs/google-workspace-rules.md`）の対象外だが、それは「AIエージェントが手元の作業として使う」ケースを想定したものであり、**24時間365日自動実行される本番Actionsから継続的にAPI呼び出しする**用途とは性質が異なる。追加の認証情報管理・障害点が増えるだけで、GitHubの別リポジトリで完結する方式に対する優位性がない
+  - GitHubリポジトリ間のcheckoutはFine-grained PAT1本で完結し、既存のgitワークフロー（コミット・push）をそのまま流用できる
+- **検討した代替案**:
+  - Google Driveに脳データを置き、Actions実行時にGoogle Drive APIで読み書きする → 上記の資格情報配置の問題により不採用
+- **再検討条件**: 特になし（GitHub資格情報のみで完結する現行方式を維持する）
+- **状態**: 有効
