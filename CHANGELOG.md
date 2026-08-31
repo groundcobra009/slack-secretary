@@ -7,6 +7,13 @@
 
 ---
 
+## 2026-08-31 — CI修正（Issue #1 / PR #3）
+
+- **変更対象**: `.github/workflows/ci.yml` `.github/workflows/secretary.yml`
+- **変更内容**: runnerのNodeを22に統一（`node --test` のglobはv21+が必要）。steps の `if` で参照できない `secrets` コンテキストを job env 経由に変更。claude CLIのインストール工程を追加
+- **変更理由**: マージ後CIの構文エラー・実行時欠陥の解消
+- **影響範囲**: CI/定期実行のみ。なおGitHub Actionsはアカウントの課金設定（payments failed / spending limit）でジョブ起動不可の状態が別途残っており、解消は社長の操作待ち
+
 ## 2026-08-31 — Phase 1（MVP）実装
 
 - **変更対象**: リポジトリ全体（`src/` `config/` `persona/` `state/` `.github/workflows/` `test/`）
