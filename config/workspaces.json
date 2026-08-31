@@ -1,0 +1,13 @@
+[
+  {
+    "name": "main",
+    "botTokenEnv": "SLACK_BOT_TOKEN_MAIN",
+    "userTokenEnv": "SLACK_USER_TOKEN_MAIN",
+    "userIdEnv": "SLACK_USER_ID_MAIN",
+    "replyAllowlist": ["general"],
+    "readExclude": {
+      "channels": [],
+      "dmUsers": []
+    }
+  }
+]
